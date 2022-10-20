@@ -1,0 +1,98 @@
+# -*- coding: utf-8 -*-
+'''
+@Author  : JackZhang9
+@Time    : 2022/10/20 16:46
+'''
+
+import pandas as pd
+from pandas import DataFrame
+from pandas import concat
+from sklearn.preprocessing import LabelEncoder,MinMaxScaler
+
+pd.set_option('display.max_rows', None, 'display.max_columns', None,'display.width',None)
+
+
+# 使用series_to_supervised()函数转换数据集，通过这个函数可以将，数据变得t-1和t
+def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
+    """
+        Frame a time series as a supervised learning dataset.
+        Arguments:
+            data: Sequence of observations as a list or NumPy array.
+            n_in: Number of lag observations as input (X).
+            n_out: Number of observations as output (y).
+            dropnan: Boolean whether or not to drop rows with NaN values.
+        Returns:
+            Pandas DataFrame of series framed for supervised learning.
+        """
+    n_vars = 1 if type(data) is list else data.shape[1]
+    df = DataFrame(data)
+    cols, names = list(), list()
+    # input sequence (t-n, ... t-1)
+    for i in range(n_in, 0, -1):
+        cols.append(df.shift(i))
+        names += [('var%d(t-%d)' % (j+1, i)) for j in range(n_vars)]
+    # forecast sequence (t, t+1, ... t+n)
+    for i in range(0, n_out):
+        cols.append(df.shift(-i))
+        if i == 0:
+            names += [('var%d(t)' % (j+1)) for j in range(n_vars)]
+        else:
+            names += [('var%d(t+%d)' % (j+1, i)) for j in range(n_vars)]
+    # put it all together
+    agg = concat(cols, axis=1)
+    agg.columns = names
+    # drop rows with NaN values
+    if dropnan:
+        agg.dropna(inplace=True)
+    return agg
+
+
+# 加载数据集
+dataset=pd.read_csv('pollution.csv',header=0,index_col=0)
+values=dataset.values
+
+encoder=LabelEncoder()
+values[:,4]=encoder.fit_transform(values[:,4])
+values=values.astype('float32')
+scaler=MinMaxScaler(feature_range=(0,1))
+scalered=scaler.fit_transform(values)
+
+
+reframed = series_to_supervised(scalered, 1, 1)
+reframed.drop(reframed.columns[[9,10,11,12,13,14,15]],axis=1,inplace=True)
+print(reframed.head())
+
+reframed.to_csv('reframed.csv')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
